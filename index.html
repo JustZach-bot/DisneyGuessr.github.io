@@ -9,8 +9,8 @@
 body{background:radial-gradient(circle at 50% -20%,#2b2f7a,var(--bg) 60%);color:var(--ink);font-family:Fredoka,system-ui,sans-serif}
 #app{height:100%}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}.two .card{margin:0;display:flex;flex-direction:column}.two .card button{margin-top:auto}@media(max-width:560px){.two{grid-template-columns:1fr}}
-.jump{position:absolute;top:6px;left:6px;right:6px;z-index:2;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
-.jump[hidden]{display:none}.jump::-webkit-scrollbar{display:none}.jb{flex:none;padding:5px 10px;font-size:12px;border-radius:99px;background:#14173add;color:var(--ink);border:1px solid #5560c0}.jb:hover{background:var(--pink);border-color:var(--pink)}
+.jump{position:absolute;top:6px;left:6px;right:6px;z-index:2;display:flex;flex-wrap:wrap;gap:4px;pointer-events:none}.jump .jb{pointer-events:auto}
+.jump[hidden]{display:none}.jump::-webkit-scrollbar{display:none}.jb{flex:none;padding:3px 8px;font-size:11px;line-height:1.3;border-radius:99px;background:#14173add;color:var(--ink);border:1px solid #5560c0}.jb:hover{background:var(--pink);border-color:var(--pink)}
 .pk{position:relative}.pkl{position:absolute;left:0;right:0;top:calc(100% - 10px);z-index:30;background:#12153a;border:2px solid #343a85;border-radius:10px;padding:6px 10px;box-shadow:0 10px 24px #000a}
 .pk summary{cursor:pointer;padding:10px 12px;border-radius:10px;background:#12153a;border:2px solid #343a85;margin-bottom:10px;list-style:none;font-size:14px}
 .pk summary::after{content:'▾';float:right}.pk[open] summary::after{content:'▴'}
@@ -37,7 +37,7 @@ button.alt{background:#343a85;color:var(--ink)}button:disabled{opacity:.45;curso
 .pl:last-child{border:0}
 #pano,#rmap{position:absolute;inset:0}
 #hud{position:absolute;top:10px;left:10px;background:#14173acc;padding:8px 14px;border-radius:12px;z-index:5}
-#gbox{position:absolute;right:12px;bottom:12px;z-index:5;width:300px;opacity:.85;transition:width .2s,opacity .2s}
+#gbox{position:absolute;right:12px;bottom:12px;z-index:5;width:340px;max-width:92vw;opacity:.85;transition:width .2s,opacity .2s}
 #gbox:hover,#gbox:focus-within{width:min(620px,92vw);opacity:1}
 #gmap{height:200px;border-radius:12px;transition:height .2s}
 #gbox:hover #gmap,#gbox:focus-within #gmap{height:min(420px,50vh)}
@@ -62,6 +62,7 @@ const LOC={
 'Shanghai Disneyland':[['Enchanted Storybook Castle',31.1440,121.6580],['Mickey Avenue',31.1450,121.6590],['Disneytown',31.1470,121.6570],['Tomorrowland, Shanghai',31.1430,121.6560],['Shanghai Disney Resort entrance',31.1460,121.6600]]};
 const BTN={'Disney World':['Magic Kingdom','EPCOT','Hollywood Studios','Animal Kingdom'],'Disneyland CA':['Disneyland CA'],'Tokyo Disney':['Tokyo Disney'],'Disneyland Paris':['Disneyland Paris'],'Hong Kong Disneyland':['Hong Kong Disneyland'],'Shanghai Disneyland':['Shanghai Disneyland']};
 const VIEW={'Magic Kingdom':[28.4177,-81.5812,16],'EPCOT':[28.3720,-81.5494,15],'Hollywood Studios':[28.3575,-81.5590,16],'Animal Kingdom':[28.3553,-81.5901,15],'Disneyland CA':[33.8100,-117.9205,15],'Tokyo Disney':[35.6300,139.8840,14],'Disneyland Paris':[48.8710,2.7790,15],'Hong Kong Disneyland':[22.3135,114.0430,16],'Shanghai Disneyland':[31.1450,121.6580,15]};
+const SHORT={'Disneyland CA':'Disneyland','Tokyo Disney':'Tokyo','Disneyland Paris':'Paris','Hong Kong Disneyland':'Hong Kong','Shanghai Disneyland':'Shanghai'};
 const MODES=['All Parks',...Object.keys(LOC)];
 const $=s=>document.querySelector(s),app=$('#app');
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -161,6 +162,13 @@ function seeded(str){let h=1779033703^str.length;for(let i=0;i<str.length;i++){h
  let a=h>>>0;return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 const qpParks=()=>{const s=lsGet('dg-qp-parks',null);const k=Object.keys(LOC);return Array.isArray(s)?k.filter(n=>s.includes(n)):k};
 const getPlayed=()=>{const p=lsGet('dg-played',null);return p&&p.key===dayKey()?p:null};
+let fbErr='';
+function fbWhy(){
+ if(!/^AIza/.test(FB_KEY))return'FB_KEY should be the Firebase Web API key (starts with "AIza"), not the project number.';
+ if(/OPERATION_NOT_ALLOWED|ADMIN_ONLY/.test(fbErr))return'Anonymous sign-in is turned off. Enable it in Firebase: Authentication > Sign-in method > Anonymous.';
+ if(/API_KEY|REFERRER|BLOCKED|PERMISSION/.test(fbErr))return'Firebase blocked the request ('+fbErr+'). Check the Web API key\'s website restrictions in Google Cloud.';
+ if(/^db 401|^db 403/.test(fbErr))return'The database rules are blocking writes. Publish the rules from the setup instructions.';
+ return'Couldn\'t reach the leaderboard ('+(fbErr||'network')+'). Check your connection and try again.'}
 async function fbAuth(){
  const J={'Content-Type':'application/json'};
  try{
@@ -168,10 +176,11 @@ async function fbAuth(){
   if(a&&a.refresh){
    const j=await (await fetch(`https://securetoken.googleapis.com/v1/token?key=${FB_KEY}`,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'grant_type=refresh_token&refresh_token='+encodeURIComponent(a.refresh)})).json();
    if(j.id_token){lsSet('dg-auth',{uid:j.user_id,refresh:j.refresh_token});return{uid:j.user_id,token:j.id_token}}
-   if(!j.error)return null}
+   if(!j.error)return null;fbErr=j.error.message||''}
   const j=await (await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${FB_KEY}`,{method:'POST',headers:J,body:JSON.stringify({returnSecureToken:true})})).json();
   if(j.idToken){lsSet('dg-auth',{uid:j.localId,refresh:j.refreshToken});return{uid:j.localId,token:j.idToken}}
- }catch(e){}
+  fbErr=(j.error&&j.error.message)||'auth failed'
+ }catch(e){fbErr='network'}
  return null}
 const slot=(key,au)=>`${BOARD_URL}/daily/${key}/${au.uid}.json?auth=${au.token}`;
 // Claims today's single daily slot. 'ok' = you may play, 'played' = already used, 'error' = couldn't reach the database.
@@ -181,7 +190,8 @@ async function claimDaily(key){
  try{const r=await fetch(slot(key,au),{method:'PUT',headers:{'if-match':'null_etag'},body:JSON.stringify({name:myName,score:0,t:Date.now(),done:false})});
   if(r.ok)return 'ok';
   if(r.status===412){const v=await (await fetch(slot(key,au))).json();if(v&&v.done)lsSet('dg-played',{key,score:v.score,name:v.name});else lsSet('dg-started',key);return 'played'}
- }catch(e){}
+  fbErr='db '+r.status
+ }catch(e){fbErr='network'}
  return 'error'}
 async function postScore(key,name,score){
  if(shared){const au=await fbAuth();if(!au)return false;
@@ -201,7 +211,7 @@ async function startSolo(daily){
  if(daily&&getPlayed())return boardScreen();
  if(daily&&lsGet('dg-started',null)===dayKey()){homeErr='You already started today\'s daily, so it\'s been used. Try Quick play or come back after 8am ET.';view='';render();return}
  if(daily){const c=await claimDaily(dayKey());if(c==='played'){return getPlayed()?boardScreen():(homeErr='You already started today\'s daily, so it\'s been used. Try Quick play or come back after 8am ET.',view='',render())}
-  if(c==='error'){homeErr='Couldn\'t reach the leaderboard. Check your connection and try again.';view='';render();return}lsSet('dg-started',dayKey())}
+  if(c==='error'){homeErr=fbWhy();view='';render();return}lsSet('dg-started',dayKey())}
  const parks=daily?null:qpParks();
  if(!daily&&!parks.length){homeErr='Select at least one park for Quick play.';view='';render();return}
  isHost=true;conns=[];myId='solo';
@@ -244,7 +254,7 @@ function renderHome(){view='home';const pl=getPlayed();
  $('#dy').onclick=()=>{if(getPlayed()){boardScreen();return}if(chk()){homeErr='';startSolo(true)}};
  $('#lbb').onclick=boardScreen;
  const upd=()=>{const on=[...document.querySelectorAll('.pkc')].filter(c=>c.checked).map(c=>c.value);lsSet('dg-qp-parks',on);
-  $('#pks').textContent=on.length===MODES.length-1?'All parks':on.length?on.length+' of '+(MODES.length-1)+' parks':'No parks selected'};
+  $('#pks').textContent=on.length===MODES.length-1?'All parks':on.length===1?on[0]:on.length?on.length+' of '+(MODES.length-1)+' parks':'No parks selected'};
  document.querySelectorAll('.pkc').forEach(c=>c.onchange=upd);upd();
  document.onclick=e=>{const d=document.querySelector('.pk');if(d&&d.open&&!d.contains(e.target))d.open=false};
  $('#qp').onclick=()=>{homeErr='';$('#herr').textContent='Loading…';startSolo(false)};
@@ -280,7 +290,7 @@ async function renderRound(){
  const v=single?VIEW[BTN[S.mode][0]]:S.mode==='Disney World'?[28.385,-81.56,11]:[30,0,1];
  gmapObj=new google.maps.Map($('#gmap'),{center:{lat:v[0],lng:v[1]},zoom:v[2],disableDefaultUI:true,clickableIcons:false,gestureHandling:'greedy',minZoom:1});
  if(!single){const j=$('#jump');j.hidden=false;
-  j.innerHTML=(S.mode==='All Parks'?'<button class="jb" data-l="">🌍 World</button>':'')+labels.map(l=>`<button class="jb" data-l="${l}">${l}</button>`).join('');
+  j.innerHTML=(S.mode==='All Parks'?'<button class="jb" data-l="">🌍 World</button>':'')+labels.map(l=>`<button class="jb" data-l="${l}">${SHORT[l]||l}</button>`).join('');
   j.querySelectorAll('.jb').forEach(b=>b.onclick=()=>{const w=VIEW[b.dataset.l]||[30,0,1];gmapObj.setCenter({lat:w[0],lng:w[1]});gmapObj.setZoom(w[2])})}
  marker=null;guess=null;
  gmapObj.addListener('click',e=>{if(submitted===S.r)return;guess={lat:e.latLng.lat(),lng:e.latLng.lng()};
