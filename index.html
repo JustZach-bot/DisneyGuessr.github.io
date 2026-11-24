@@ -149,7 +149,7 @@ function joinRoom(code){
 const BOARD_URL='https://disneyguessr-leaderboard-default-rtdb.firebaseio.com';
 // Firebase "Web API key" (Project settings > General). Needed for anonymous sign-in, which gives each browser an ID
 // so the database can allow exactly one daily entry per ID. Leave empty to fall back to this-device-only scores.
-const FB_KEY='70663279769';
+const FB_KEY='AIzaSyDMiHDkzNC6E8PUUVdJ62AI5N8dC4Pgtoo';
 const shared=!!(BOARD_URL&&FB_KEY);
 const lsGet=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
