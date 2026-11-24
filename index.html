@@ -9,6 +9,8 @@
 body{background:radial-gradient(circle at 50% -20%,#2b2f7a,var(--bg) 60%);color:var(--ink);font-family:Fredoka,system-ui,sans-serif}
 #app{height:100%}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}.two .card{margin:0;display:flex;flex-direction:column}.two .card button{margin-top:auto}@media(max-width:560px){.two{grid-template-columns:1fr}}
+.jump{position:absolute;top:6px;left:6px;right:6px;z-index:2;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
+.jump[hidden]{display:none}.jump::-webkit-scrollbar{display:none}.jb{flex:none;padding:5px 10px;font-size:12px;border-radius:99px;background:#14173add;color:var(--ink);border:1px solid #5560c0}.jb:hover{background:var(--pink);border-color:var(--pink)}
 .pk{position:relative}.pkl{position:absolute;left:0;right:0;top:calc(100% - 10px);z-index:30;background:#12153a;border:2px solid #343a85;border-radius:10px;padding:6px 10px;box-shadow:0 10px 24px #000a}
 .pk summary{cursor:pointer;padding:10px 12px;border-radius:10px;background:#12153a;border:2px solid #343a85;margin-bottom:10px;list-style:none;font-size:14px}
 .pk summary::after{content:'▾';float:right}.pk[open] summary::after{content:'▴'}
@@ -58,6 +60,8 @@ const LOC={
 'Disneyland Paris':[['Main Street, Paris',48.8723,2.7757],['Sleeping Beauty Castle, Paris',48.8737,2.7750],['Walt Disney Studios',48.8680,2.7800],['Disney Village',48.8706,2.7835],['Disneyland Paris entrance',48.8715,2.7790]],
 'Hong Kong Disneyland':[['Main Street, Hong Kong',22.3130,114.0413],['Castle of Magical Dreams',22.3128,114.0420],['Hollywood Hotel',22.3155,114.0450],['Toy Story Land, HK',22.3115,114.0420],['Hong Kong Disneyland entrance',22.3140,114.0430]],
 'Shanghai Disneyland':[['Enchanted Storybook Castle',31.1440,121.6580],['Mickey Avenue',31.1450,121.6590],['Disneytown',31.1470,121.6570],['Tomorrowland, Shanghai',31.1430,121.6560],['Shanghai Disney Resort entrance',31.1460,121.6600]]};
+const BTN={'Disney World':['Magic Kingdom','EPCOT','Hollywood Studios','Animal Kingdom'],'Disneyland CA':['Disneyland CA'],'Tokyo Disney':['Tokyo Disney'],'Disneyland Paris':['Disneyland Paris'],'Hong Kong Disneyland':['Hong Kong Disneyland'],'Shanghai Disneyland':['Shanghai Disneyland']};
+const VIEW={'Magic Kingdom':[28.4177,-81.5812,16],'EPCOT':[28.3720,-81.5494,15],'Hollywood Studios':[28.3575,-81.5590,16],'Animal Kingdom':[28.3553,-81.5901,15],'Disneyland CA':[33.8100,-117.9205,15],'Tokyo Disney':[35.6300,139.8840,14],'Disneyland Paris':[48.8710,2.7790,15],'Hong Kong Disneyland':[22.3135,114.0430,16],'Shanghai Disneyland':[31.1450,121.6580,15]};
 const MODES=['All Parks',...Object.keys(LOC)];
 const $=s=>document.querySelector(s),app=$('#app');
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -145,7 +149,7 @@ function joinRoom(code){
 const BOARD_URL='https://disneyguessr-leaderboard-default-rtdb.firebaseio.com';
 // Firebase "Web API key" (Project settings > General). Needed for anonymous sign-in, which gives each browser an ID
 // so the database can allow exactly one daily entry per ID. Leave empty to fall back to this-device-only scores.
-const FB_KEY='';
+const FB_KEY='70663279769';
 const shared=!!(BOARD_URL&&FB_KEY);
 const lsGet=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
@@ -183,7 +187,7 @@ async function postScore(key,name,score){
  if(shared){const au=await fbAuth();if(!au)return false;
   try{return (await fetch(slot(key,au),{method:'PUT',body:JSON.stringify({name,score,t:Date.now(),done:true})})).ok}catch(e){return false}}
  const a=lsGet('dg-board-'+key,[]);a.push({name,score,t:Date.now(),done:true});lsSet('dg-board-'+key,a);return true}
-async function getBoard(key){if(shared||BOARD_URL){try{const r=await fetch(`${BOARD_URL}/daily/${key}.json`);return Object.entries(await r.json()||{}).map(([k,v])=>({...v,uid:k})).filter(e=>e.done)}catch(x){return null}}return lsGet('dg-board-'+key,[])}
+async function getBoard(key){if(shared){try{const r=await fetch(`${BOARD_URL}/daily/${key}.json`);return Object.entries(await r.json()||{}).map(([k,v])=>({...v,uid:k})).filter(e=>e.done)}catch(x){return null}}return lsGet('dg-board-'+key,[])}
 async function showBoard(el,key){
  el.innerHTML='<p class="sub">Loading leaderboard…</p>';const b=await getBoard(key);
  if(!b){el.innerHTML='<p class="err">Couldn\'t load the leaderboard. Try again later.</p>';return}
@@ -267,12 +271,17 @@ function renderScreen(){
 function status(){const n=Object.values(S.players).filter(p=>!p.left),d=n.filter(p=>p.g[S.r]).length;
  const h=$('#hud');if(h)h.innerHTML=`Round ${S.r+1}/${ROUNDS} · Score ${(S.players[myId]?.total||0).toLocaleString()}<br><small>${d}/${n.length} guessed</small>`}
 async function renderRound(){
- app.innerHTML=`<div class="full"><div id="pano"></div><div id="hud"></div><div id="gbox"><div id="gmap"></div><button id="gbtn" disabled>Place your pin</button></div></div>`;status();
+ app.innerHTML=`<div class="full"><div id="pano"></div><div id="hud"></div><div id="gbox"><div id="jump" class="jump" hidden></div><div id="gmap"></div><button id="gbtn" disabled>Place your pin</button></div></div>`;status();
  try{await loadMaps()}catch(e){app.innerHTML='<div class="wrap"><p class="err">'+esc(e.message)+'</p></div>';return}
  const R=S.rounds[S.r];
  new google.maps.StreetViewPanorama($('#pano'),{pano:R.pano,addressControl:false,showRoadLabels:false,fullscreenControl:false,motionTracking:false,motionTrackingControl:false,enableCloseButton:false});
- const c=S.mode==='All Parks'?{lat:30,lng:0}:{lat:LOC[S.mode][0][1],lng:LOC[S.mode][0][2]};
- gmapObj=new google.maps.Map($('#gmap'),{center:c,zoom:S.mode==='All Parks'?1:14,disableDefaultUI:true,clickableIcons:false,gestureHandling:'greedy',minZoom:1});
+ const names=S.mode==='All Parks'?(S.parks||Object.keys(LOC)):[S.mode],labels=names.flatMap(n=>BTN[n]);
+ const single=S.mode!=='All Parks'&&BTN[S.mode].length===1;
+ const v=single?VIEW[BTN[S.mode][0]]:S.mode==='Disney World'?[28.385,-81.56,11]:[30,0,1];
+ gmapObj=new google.maps.Map($('#gmap'),{center:{lat:v[0],lng:v[1]},zoom:v[2],disableDefaultUI:true,clickableIcons:false,gestureHandling:'greedy',minZoom:1});
+ if(!single){const j=$('#jump');j.hidden=false;
+  j.innerHTML=(S.mode==='All Parks'?'<button class="jb" data-l="">🌍 World</button>':'')+labels.map(l=>`<button class="jb" data-l="${l}">${l}</button>`).join('');
+  j.querySelectorAll('.jb').forEach(b=>b.onclick=()=>{const w=VIEW[b.dataset.l]||[30,0,1];gmapObj.setCenter({lat:w[0],lng:w[1]});gmapObj.setZoom(w[2])})}
  marker=null;guess=null;
  gmapObj.addListener('click',e=>{if(submitted===S.r)return;guess={lat:e.latLng.lat(),lng:e.latLng.lng()};
   if(marker)marker.setPosition(e.latLng);else marker=new google.maps.Marker({position:e.latLng,map:gmapObj});
