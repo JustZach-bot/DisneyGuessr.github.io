@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DisneyGuessr</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#14173a;--panel:#1e2250;--gold:#f5c542;--pink:#e8457c;--ink:#f4f1ff;--mut:#a9aed8}
+*{box-sizing:border-box}html,body{height:100%;margin:0}
+body{background:radial-gradient(circle at 50% -20%,#2b2f7a,var(--bg) 60%);color:var(--ink);font-family:Fredoka,system-ui,sans-serif}
+#app{height:100%}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}.two .card{margin:0;display:flex;flex-direction:column}.two .card button{margin-top:auto}@media(max-width:560px){.two{grid-template-columns:1fr}}
+.pk{position:relative}.pkl{position:absolute;left:0;right:0;top:calc(100% - 10px);z-index:30;background:#12153a;border:2px solid #343a85;border-radius:10px;padding:6px 10px;box-shadow:0 10px 24px #000a}
+.pk summary{cursor:pointer;padding:10px 12px;border-radius:10px;background:#12153a;border:2px solid #343a85;margin-bottom:10px;list-style:none;font-size:14px}
+.pk summary::after{content:'▾';float:right}.pk[open] summary::after{content:'▴'}
+.pk label{display:flex;align-items:center;gap:8px;padding:5px 4px;color:var(--ink);font-size:14px;cursor:pointer}
+.pk input{width:auto;margin:0;accent-color:var(--pink)}
+.lbrow{display:flex;justify-content:space-between;padding:7px 8px;border-radius:8px}.lbrow.me{background:#343a85;color:var(--gold)}
+.wrap{max-width:640px;margin:0 auto;padding:28px 18px;text-align:center}
+h1{font-size:clamp(40px,10vw,64px);margin:8px 0 2px;color:var(--gold);letter-spacing:1px;text-shadow:0 3px 0 #a8421f}
+h2{margin:6px 0}
+.sub{color:var(--mut);margin:0 0 22px}
+.card{background:var(--panel);border-radius:16px;padding:18px;margin:14px 0;text-align:left}
+label{font-size:14px;color:var(--mut)}
+input,select{width:100%;padding:12px;border-radius:10px;border:2px solid #343a85;background:#12153a;color:var(--ink);font:inherit;margin:6px 0 12px}
+input:focus,select:focus,button:focus-visible{outline:3px solid var(--gold)}
+button{font:inherit;font-weight:600;border:0;border-radius:12px;padding:12px 18px;cursor:pointer;background:var(--gold);color:#2a1d00}
+button.alt{background:#343a85;color:var(--ink)}button:disabled{opacity:.45;cursor:not-allowed}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 12px}
+.chip{padding:8px 12px;border-radius:99px;background:#12153a;border:2px solid #343a85;color:var(--ink);font-size:14px}
+.chip.on{background:var(--pink);border-color:var(--pink)}
+.row{display:flex;gap:10px}.row>*{flex:1}
+.err{color:#ff8fa8;min-height:20px;font-size:14px}
+.code{font-size:56px;letter-spacing:8px;color:var(--gold);font-weight:700;text-align:center}
+.pl{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #343a85}
+.pl:last-child{border:0}
+#pano,#rmap{position:absolute;inset:0}
+#hud{position:absolute;top:10px;left:10px;background:#14173acc;padding:8px 14px;border-radius:12px;z-index:5}
+#gbox{position:absolute;right:12px;bottom:12px;z-index:5;width:300px;opacity:.85;transition:width .2s,opacity .2s}
+#gbox:hover,#gbox:focus-within{width:min(620px,92vw);opacity:1}
+#gmap{height:200px;border-radius:12px;transition:height .2s}
+#gbox:hover #gmap,#gbox:focus-within #gmap{height:min(420px,50vh)}
+#gbtn{width:100%;margin-top:6px}
+#side{position:absolute;left:10px;top:10px;z-index:5;background:#14173af0;border-radius:14px;padding:12px;max-width:min(320px,70vw);max-height:80%;overflow:auto;font-size:14px}
+#nextbox{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);z-index:5;text-align:center}
+.full{position:relative;height:100%}
+.win{color:var(--gold)}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style></head><body>
+<div id="app"></div>
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>
+const KEY="AIzaSyDlJjVop1AwJcgmPNdZWSi-s7hfQBH8FUE";
+const ROUNDS=5;
+const LOC={
+'Disney World':[['Main Street, Magic Kingdom',28.4177,-81.5812],['Cinderella Castle',28.4195,-81.5812],['EPCOT World Showcase',28.3694,-81.5494],['Spaceship Earth',28.3747,-81.5494],['Hollywood Boulevard',28.3575,-81.5590],['Tree of Life',28.3553,-81.5901],['Disney Springs',28.3702,-81.5190],['Contemporary Resort',28.4151,-81.5740]],
+'Disneyland CA':[['Main Street U.S.A.',33.8121,-117.9190],['Fantasyland',33.8128,-117.9190],['Frontierland',33.8130,-117.9200],['Buena Vista Street',33.8063,-117.9190],['Pixar Pier',33.8080,-117.9230],['Cars Land',33.8052,-117.9205],['Downtown Disney',33.8090,-117.9240]],
+'Tokyo Disney':[['World Bazaar',35.6329,139.8795],['Cinderella Castle, Tokyo',35.6330,139.8805],['Mediterranean Harbor',35.6267,139.8851],['Ikspiari',35.6320,139.8830],['Tokyo DisneySea entrance',35.6280,139.8890],['Tokyo Disney Resort Line',35.6350,139.8800]],
+'Disneyland Paris':[['Main Street, Paris',48.8723,2.7757],['Sleeping Beauty Castle, Paris',48.8737,2.7750],['Walt Disney Studios',48.8680,2.7800],['Disney Village',48.8706,2.7835],['Disneyland Paris entrance',48.8715,2.7790]],
+'Hong Kong Disneyland':[['Main Street, Hong Kong',22.3130,114.0413],['Castle of Magical Dreams',22.3128,114.0420],['Hollywood Hotel',22.3155,114.0450],['Toy Story Land, HK',22.3115,114.0420],['Hong Kong Disneyland entrance',22.3140,114.0430]],
+'Shanghai Disneyland':[['Enchanted Storybook Castle',31.1440,121.6580],['Mickey Avenue',31.1450,121.6590],['Disneytown',31.1470,121.6570],['Tomorrowland, Shanghai',31.1430,121.6560],['Shanghai Disney Resort entrance',31.1460,121.6600]]};
+const MODES=['All Parks',...Object.keys(LOC)];
+const $=s=>document.querySelector(s),app=$('#app');
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+// ---------- profanity ----------
+const BAD=['fuck','shit','bitch','cunt','dick','cock','pussy','asshole','bastard','whore','slut','nigg','fag','retard','penis','vagina','porn','rape','nazi','hitler','twat','wank','boob','blowjob','handjob','dildo','jizz','molest','pedo','kkk','bollock','prick','douche','motherf','faggot','tranny','spic','chink','kike','coon','gook'];
+const BADTOK=['ass','tit','tits','sex','cum','anal','fk','fck','wtf','stfu','hell','damn','crap','piss','nig','homo','gay','cp'];
+function norm(s){return s.toLowerCase().replace(/[@4]/g,'a').replace(/[3]/g,'e').replace(/[1!|]/g,'i').replace(/0/g,'o').replace(/[$5]/g,'s').replace(/7/g,'t').replace(/ph/g,'f')}
+function profane(n){const t=norm(n);const flat=t.replace(/[^a-z]/g,'').replace(/(.)\1+/g,'$1');const flat2=t.replace(/[^a-z]/g,'');
+ if(BAD.some(w=>flat.includes(w)||flat2.includes(w)))return true;
+ return t.split(/[^a-z]+/).some(x=>BADTOK.includes(x))}
+function nameError(n){n=n.trim();if(n.length<2||n.length>16)return'Pick a name between 2 and 16 characters.';
+ if(!/^[A-Za-z0-9 _-]+$/.test(n))return'Use only letters, numbers, spaces, _ and -.';
+ if(profane(n))return'That name isn\'t allowed. Please choose a family-friendly name.';return''}
+
+// ---------- maps loader ----------
+let mapsP;function loadMaps(){return mapsP||(mapsP=new Promise((res,rej)=>{window.__mr=res;const s=document.createElement('script');
+ s.src=`https://maps.googleapis.com/maps/api/js?key=${KEY}&callback=__mr&v=weekly`;s.onerror=()=>rej(new Error('Google Maps failed to load'));document.head.appendChild(s)}))}
+window.gm_authFailure=()=>{alert('Google Maps rejected the API key. Enable "Maps JavaScript API" and check the key\'s referrer restrictions.')};
+
+// ---------- state ----------
+let peer,conns=[],hostConn,isHost=false,myId='',myName='',S=null,view='',submitted=-1,pickMode='All Parks',gmapObj,marker,guess,homeErr='';
+const PFX='disneyguessr-';
+const genCode=()=>{const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';return Array.from({length:5},()=>c[Math.random()*c.length|0]).join('')};
+function hav(a,b,c,d){const R=6371,r=x=>x*Math.PI/180,dl=r(c-a),dn=r(d-b);const h=Math.sin(dl/2)**2+Math.cos(r(a))*Math.cos(r(c))*Math.sin(dn/2)**2;return 2*R*Math.asin(Math.sqrt(h))}
+const fmt=d=>d<1?Math.round(d*1000)+' m':d<100?d.toFixed(1)+' km':Math.round(d).toLocaleString()+' km';
+const shuffle=(a,rng=Math.random)=>{for(let i=a.length-1;i>0;i--){const j=rng()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
+
+function broadcast(){conns.forEach(c=>c.open&&c.send({t:'state',s:S}));render()}
+function hostInit(code){S={code,mode:pickMode,phase:'lobby',r:0,rounds:[],players:{[myId]:{name:myName,total:0,g:[]}}}}
+
+// ---------- host networking ----------
+function createRoom(){
+ const code=genCode();peer=new Peer(PFX+code);isHost=true;
+ peer.on('open',id=>{myId=id;hostInit(code);view='';broadcast()});
+ peer.on('error',e=>{if(e.type==='unavailable-id'){peer.destroy();createRoom()}else{homeErr='Connection problem: '+e.type;S=null;render()}});
+ peer.on('connection',c=>{
+  c.on('data',d=>{
+   if(d.t==='hello'){
+    if(S.phase!=='lobby'){c.send({t:'err',m:'That game has already started.'});return setTimeout(()=>c.close(),300)}
+    const n=String(d.name||'');if(nameError(n)){c.send({t:'err',m:'Invalid name.'});return}
+    if(Object.values(S.players).some(p=>p.name.toLowerCase()===n.trim().toLowerCase()&&!p.left)){c.send({t:'err',m:'That name is taken in this room.'});return}
+    conns.push(c);S.players[c.peer]={name:n.trim(),total:0,g:[]};broadcast()}
+   else if(d.t==='guess')addGuess(c.peer,+d.lat,+d.lng)});
+  c.on('close',()=>{conns=conns.filter(x=>x!==c);const p=S.players[c.peer];if(p){if(S.phase==='lobby')delete S.players[c.peer];else p.left=true}checkAll();broadcast()})})}
+
+async function startGame(){
+ S.phase='loading';S.mode=S.mode;broadcast();
+ try{await loadMaps();S.rounds=await pickRounds(S.mode)}catch(e){S.phase='lobby';S.err=e.message;broadcast();return}
+ Object.values(S.players).forEach(p=>{p.total=0;p.g=[]});S.r=0;S.phase='round';S.err='';broadcast()}
+async function pickRounds(mode,rng=Math.random,parks){
+ const names=parks||(mode==='All Parks'?Object.keys(LOC):[mode]);
+ const pool=shuffle(names.flatMap(n=>LOC[n]),rng);
+ const sv=new google.maps.StreetViewService(),out=[];
+ for(const [n,la,ln] of pool){if(out.length>=ROUNDS)break;
+  try{const r=await sv.getPanorama({location:{lat:la,lng:ln},radius:400,preference:'nearest'});const l=r.data.location;
+   out.push({n,pano:l.pano,lat:l.latLng.lat(),lng:l.latLng.lng()})}catch(e){}}
+ if(!out.length)throw new Error('No Street View found. Make sure the Maps JavaScript API is enabled for your key.');
+ for(let i=0;out.length<ROUNDS;i++)out.push(out[i%out.length]);
+ return out}
+function addGuess(pid,lat,lng){
+ const p=S.players[pid];if(S.phase!=='round'||!p||p.g[S.r]||isNaN(lat)||isNaN(lng))return;
+ const R=S.rounds[S.r],d=hav(lat,lng,R.lat,R.lng),sc=S.mode==='All Parks'?1500:0.9,pts=Math.round(5000*Math.exp(-d/sc));
+ p.g[S.r]={lat,lng,d,pts};p.total+=pts;checkAll();broadcast()}
+function checkAll(){if(S&&S.phase==='round'&&Object.values(S.players).filter(p=>!p.left).every(p=>p.g[S.r]))S.phase='result'}
+function nextRound(){if(S.r<ROUNDS-1){S.r++;S.phase='round'}else S.phase='final';broadcast()}
+function playAgain(){S.phase='lobby';S.rounds=[];Object.values(S.players).forEach(p=>{p.total=0;p.g=[]});
+ Object.keys(S.players).forEach(k=>{if(S.players[k].left)delete S.players[k]});broadcast()}
+
+// ---------- guest networking ----------
+function joinRoom(code){
+ peer=new Peer();isHost=false;let ok=false;
+ const fail=m=>{homeErr=m;if(peer)peer.destroy();S=null;view='';render()};
+ setTimeout(()=>{if(!ok)fail('Couldn\'t find that room. Check the code.')},9000);
+ peer.on('open',id=>{myId=id;hostConn=peer.connect(PFX+code,{reliable:true});
+  hostConn.on('open',()=>hostConn.send({t:'hello',name:myName}));
+  hostConn.on('data',d=>{if(d.t==='state'){ok=true;S=d.s;render()}else if(d.t==='err'){ok=true;fail(d.m)}});
+  hostConn.on('close',()=>{if(S)fail('The host left the room.')})});
+ peer.on('error',e=>{if(!ok)fail('Couldn\'t find that room. Check the code.')})}
+
+
+// ---------- daily + solo ----------
+// Optional shared leaderboard: paste a Firebase Realtime Database URL (e.g. https://yourapp-default-rtdb.firebaseio.com)
+// with rules allowing read/write on "daily". Leave empty to keep scores on this device only.
+const BOARD_URL='https://disneyguessr-leaderboard-default-rtdb.firebaseio.com';
+// Firebase "Web API key" (Project settings > General). Needed for anonymous sign-in, which gives each browser an ID
+// so the database can allow exactly one daily entry per ID. Leave empty to fall back to this-device-only scores.
+const FB_KEY='';
+const shared=!!(BOARD_URL&&FB_KEY);
+const lsGet=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}};
+const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
+function nyWall(){const o={};new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',hourCycle:'h23',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'}).formatToParts(new Date()).forEach(x=>o[x.type]=x.value);
+ return Date.UTC(+o.year,+o.month-1,+o.day,+o.hour,+o.minute,+o.second)}
+const dayKey=()=>new Date(nyWall()-8*36e5).toISOString().slice(0,10);
+function untilReset(){const r=36e5*24-((nyWall()-8*36e5)%(36e5*24)),h=Math.floor(r/36e5),m=Math.floor(r%36e5/6e4);return h+'h '+m+'m'}
+function seeded(str){let h=1779033703^str.length;for(let i=0;i<str.length;i++){h=Math.imul(h^str.charCodeAt(i),3432918353);h=h<<13|h>>>19}
+ let a=h>>>0;return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const qpParks=()=>{const s=lsGet('dg-qp-parks',null);const k=Object.keys(LOC);return Array.isArray(s)?k.filter(n=>s.includes(n)):k};
+const getPlayed=()=>{const p=lsGet('dg-played',null);return p&&p.key===dayKey()?p:null};
+async function fbAuth(){
+ const J={'Content-Type':'application/json'};
+ try{
+  const a=lsGet('dg-auth',null);
+  if(a&&a.refresh){
+   const j=await (await fetch(`https://securetoken.googleapis.com/v1/token?key=${FB_KEY}`,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'grant_type=refresh_token&refresh_token='+encodeURIComponent(a.refresh)})).json();
+   if(j.id_token){lsSet('dg-auth',{uid:j.user_id,refresh:j.refresh_token});return{uid:j.user_id,token:j.id_token}}
+   if(!j.error)return null}
+  const j=await (await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${FB_KEY}`,{method:'POST',headers:J,body:JSON.stringify({returnSecureToken:true})})).json();
+  if(j.idToken){lsSet('dg-auth',{uid:j.localId,refresh:j.refreshToken});return{uid:j.localId,token:j.idToken}}
+ }catch(e){}
+ return null}
+const slot=(key,au)=>`${BOARD_URL}/daily/${key}/${au.uid}.json?auth=${au.token}`;
+// Claims today's single daily slot. 'ok' = you may play, 'played' = already used, 'error' = couldn't reach the database.
+async function claimDaily(key){
+ if(!shared)return 'ok';
+ const au=await fbAuth();if(!au)return 'error';
+ try{const r=await fetch(slot(key,au),{method:'PUT',headers:{'if-match':'null_etag'},body:JSON.stringify({name:myName,score:0,t:Date.now(),done:false})});
+  if(r.ok)return 'ok';
+  if(r.status===412){const v=await (await fetch(slot(key,au))).json();if(v&&v.done)lsSet('dg-played',{key,score:v.score,name:v.name});else lsSet('dg-started',key);return 'played'}
+ }catch(e){}
+ return 'error'}
+async function postScore(key,name,score){
+ if(shared){const au=await fbAuth();if(!au)return false;
+  try{return (await fetch(slot(key,au),{method:'PUT',body:JSON.stringify({name,score,t:Date.now(),done:true})})).ok}catch(e){return false}}
+ const a=lsGet('dg-board-'+key,[]);a.push({name,score,t:Date.now(),done:true});lsSet('dg-board-'+key,a);return true}
+async function getBoard(key){if(shared||BOARD_URL){try{const r=await fetch(`${BOARD_URL}/daily/${key}.json`);return Object.entries(await r.json()||{}).map(([k,v])=>({...v,uid:k})).filter(e=>e.done)}catch(x){return null}}return lsGet('dg-board-'+key,[])}
+async function showBoard(el,key){
+ el.innerHTML='<p class="sub">Loading leaderboard…</p>';const b=await getBoard(key);
+ if(!b){el.innerHTML='<p class="err">Couldn\'t load the leaderboard. Try again later.</p>';return}
+ b.sort((x,y)=>y.score-x.score||x.t-y.t);const me=getPlayed();const uid=(lsGet('dg-auth',null)||{}).uid;let mi=me?b.findIndex(e=>shared?e.uid===uid:(e.name===me.name&&e.score===me.score)):-1;
+ el.innerHTML=`<div class="card"><b>Daily leaderboard · ${key}</b><div style="margin-top:8px">${b.slice(0,25).map((e,i)=>`<div class="lbrow ${i===mi?'me':''}"><span>${i+1}. ${esc(e.name)}</span><b>${(+e.score).toLocaleString()}</b></div>`).join('')||'<p class="sub">No scores yet. Be the first!</p>'}
+ ${mi>=25?`<div class="lbrow me"><span>${mi+1}. ${esc(me.name)}</span><b>${me.score.toLocaleString()}</b></div>`:''}</div>
+ ${shared?'':'<p class="sub" style="font-size:13px;margin-top:10px">Scores are saved on this device only until a shared database is connected.</p>'}</div>`}
+function goHome(){S=null;view='';conns=[];if(peer){try{peer.destroy()}catch(e){}peer=null}renderHome()}
+function boardScreen(){view='board';app.innerHTML=`<div class="wrap"><h1>Daily</h1><p class="sub">Resets in ${untilReset()} (8am Eastern)</p><div id="lb"></div><button class="alt" id="hm">Home</button></div>`;$('#hm').onclick=goHome;showBoard($('#lb'),dayKey())}
+async function startSolo(daily){
+ if(daily&&getPlayed())return boardScreen();
+ if(daily&&lsGet('dg-started',null)===dayKey()){homeErr='You already started today\'s daily, so it\'s been used. Try Quick play or come back after 8am ET.';view='';render();return}
+ if(daily){const c=await claimDaily(dayKey());if(c==='played'){return getPlayed()?boardScreen():(homeErr='You already started today\'s daily, so it\'s been used. Try Quick play or come back after 8am ET.',view='',render())}
+  if(c==='error'){homeErr='Couldn\'t reach the leaderboard. Check your connection and try again.';view='';render();return}lsSet('dg-started',dayKey())}
+ const parks=daily?null:qpParks();
+ if(!daily&&!parks.length){homeErr='Select at least one park for Quick play.';view='';render();return}
+ isHost=true;conns=[];myId='solo';
+ S={code:'',mode:(!daily&&parks.length===1)?parks[0]:'All Parks',parks,phase:'loading',r:0,rounds:[],solo:true,daily:daily?dayKey():null,players:{solo:{name:daily?myName:'You',total:0,g:[]}}};
+ view='';render();
+ try{await loadMaps();S.rounds=await pickRounds(S.mode,daily?seeded('disneyguessr'+dayKey()):Math.random,daily?null:parks)}
+ catch(e){S=null;homeErr=e.message;view='';render();return}
+ S.phase='round';broadcast()}
+async function finishDaily(){
+ const sc=S.players.solo.total,nm=S.players.solo.name;
+ let ok=true;if(!S.sub){S.sub=1;lsSet('dg-played',{key:S.daily,score:sc,name:nm});ok=await postScore(S.daily,nm,sc)||await postScore(S.daily,nm,sc)}
+ await showBoard($('#lb'),S.daily);
+ if(!ok)$('#lb').insertAdjacentHTML('afterbegin','<p class="err">Your score couldn\'t be saved to the leaderboard.</p>')}
+
+// ---------- UI ----------
+function modeChips(sel,on,cb){return`<div class="chips">${MODES.map(m=>`<button class="chip ${m===sel?'on':''}" data-m="${m}" ${on?'':'disabled'}>${m}</button>`).join('')}</div>`}
+function bindChips(cb){document.querySelectorAll('.chip').forEach(b=>b.onclick=()=>cb(b.dataset.m))}
+function render(){
+ if(!S){if(view!=='home')renderHome();else $('#herr')&&($('#herr').textContent=homeErr);return}
+ const key=S.phase+(S.phase==='round'||S.phase==='result'?S.r:'');
+ if(S.phase==='lobby'||S.phase==='loading'||S.phase==='final'){view=key+JSON.stringify(Object.values(S.players).map(p=>[p.name,p.total,p.left]))+S.mode+(S.err||'');renderScreen();return}
+ if(S.phase==='round'){if(view!==key){view=key;submitted=-1;renderRound()}else status();return}
+ if(S.phase==='result'&&view!==key){view=key;renderResult()}}
+function renderHome(){view='home';const pl=getPlayed();
+ app.innerHTML=`<div class="wrap"><h1>DisneyGuessr</h1><p class="sub">Drop into a Disney park. Pin where you are. Beat your friends.</p>
+ <div class="card"><label for="nm">Your name <small>(needed for Daily and rooms)</small></label><input id="nm" maxlength="16" placeholder="e.g. Pixie Dust" value="${esc(myName)}" autocomplete="off" style="margin-bottom:0"></div>
+ <div class="two">
+  <div class="card"><h2>Daily</h2><p class="sub" style="margin:0 0 12px;font-size:14px">The same 5 spots from all parks for everyone. New set in ${untilReset()} (8am ET).</p>
+   <button id="dy">${pl?'Today: '+pl.score.toLocaleString()+' pts':'Play daily'}</button><button id="lbb" class="alt" style="margin-top:8px">Leaderboard</button></div>
+  <div class="card"><h2>Quick play</h2><p class="sub" style="margin:0 0 12px;font-size:14px">5 random spots. No name or room needed.</p>
+   <details class="pk"><summary id="pks"></summary><div class="pkl">${Object.keys(LOC).map(n=>`<label><input type="checkbox" class="pkc" value="${n}" ${qpParks().includes(n)?'checked':''}>${n}</label>`).join('')}</div></details>
+   <button id="qp" class="alt">Play solo</button></div>
+ </div>
+ <div class="card"><h2>Play with friends</h2><label>Park</label>${modeChips(pickMode,true)}
+ <button id="cr" style="width:100%">Create room</button>
+ <label for="cd" style="display:block;margin-top:16px">Have an invite code?</label><div class="row"><input id="cd" maxlength="5" placeholder="ABCDE" style="text-transform:uppercase"><button id="jn" class="alt" style="margin:6px 0 12px">Join room</button></div></div>
+ <div class="err" id="herr">${esc(homeErr)}</div></div>`;
+ bindChips(m=>{pickMode=m;myName=$('#nm').value;renderHome()});
+ const chk=()=>{myName=$('#nm').value.trim();const e=nameError(myName);if(e){$('#herr').textContent=e;return false}return true};
+ $('#dy').onclick=()=>{if(getPlayed()){boardScreen();return}if(chk()){homeErr='';startSolo(true)}};
+ $('#lbb').onclick=boardScreen;
+ const upd=()=>{const on=[...document.querySelectorAll('.pkc')].filter(c=>c.checked).map(c=>c.value);lsSet('dg-qp-parks',on);
+  $('#pks').textContent=on.length===MODES.length-1?'All parks':on.length?on.length+' of '+(MODES.length-1)+' parks':'No parks selected'};
+ document.querySelectorAll('.pkc').forEach(c=>c.onchange=upd);upd();
+ document.onclick=e=>{const d=document.querySelector('.pk');if(d&&d.open&&!d.contains(e.target))d.open=false};
+ $('#qp').onclick=()=>{homeErr='';$('#herr').textContent='Loading…';startSolo(false)};
+ $('#cr').onclick=()=>{if(chk()){homeErr='';$('#herr').textContent='Creating room…';createRoom()}};
+ $('#jn').onclick=()=>{if(!chk())return;const c=$('#cd').value.trim().toUpperCase();if(c.length!==5){$('#herr').textContent='Enter the 5-letter invite code.';return}
+  homeErr='';$('#herr').textContent='Joining…';joinRoom(c)}}
+function renderScreen(){
+ const ps=Object.entries(S.players).sort((a,b)=>b[1].total-a[1].total);
+ if(S.phase==='loading'){app.innerHTML=`<div class="wrap"><h1>DisneyGuessr</h1><p class="sub">Finding Street View spots in the parks…</p></div>`;return}
+ if(S.phase==='final'){const top=ps[0][1].total,wins=ps.filter(p=>p[1].total===top).map(p=>esc(p[1].name)).join(' & ');
+  app.innerHTML=`<div class="wrap"><h1>Game over</h1><h2 class="win">${S.solo?top.toLocaleString()+' points':wins+' '+(ps.filter(p=>p[1].total===top).length>1?'tie':'wins')+'!'}</h2><div class="card">
+  ${ps.map(([id,p],i)=>`<div class="pl"><span>${i+1}. ${esc(p.name)}${id===myId?' (you)':''}</span><b>${p.total.toLocaleString()}</b></div>`).join('')}</div>
+  ${S.solo?`<div id="lb"></div><div class="row" style="margin-top:12px">${S.daily?'':'<button id="pa">Play again</button>'}<button id="hm" class="alt">Home</button></div>`:isHost?'<button id="pa">Play again</button>':'<p class="sub">Waiting for the host to start another game…</p>'}</div>`;
+  if(S.solo){$('#hm').onclick=goHome;if(S.daily)finishDaily();else $('#pa').onclick=()=>startSolo(false);return}
+  if(isHost)$('#pa').onclick=playAgain;return}
+ app.innerHTML=`<div class="wrap"><h1>DisneyGuessr</h1><p class="sub">Share this code with friends</p>
+ <div class="code" id="cc">${S.code}</div><div style="margin:10px 0"><button class="alt" id="cp">Copy invite code</button></div>
+ <div class="card"><label>Park</label>${modeChips(S.mode,isHost)}<label>Players (${ps.length})</label>
+ ${ps.map(([id,p])=>`<div class="pl"><span>${esc(p.name)}${id===myId?' (you)':''}</span>${S.players&&id===Object.keys(S.players)[0]?'<span>host</span>':''}</div>`).join('')}</div>
+ <div class="err">${esc(S.err||'')}</div>
+ ${isHost?'<button id="go">Start game · 5 rounds</button>':'<p class="sub">Waiting for the host to start…</p>'}</div>`;
+ $('#cp').onclick=()=>{navigator.clipboard&&navigator.clipboard.writeText(S.code);$('#cp').textContent='Copied!'};
+ if(isHost){bindChips(m=>{S.mode=m;pickMode=m;broadcast()});$('#go').onclick=startGame}}
+function status(){const n=Object.values(S.players).filter(p=>!p.left),d=n.filter(p=>p.g[S.r]).length;
+ const h=$('#hud');if(h)h.innerHTML=`Round ${S.r+1}/${ROUNDS} · Score ${(S.players[myId]?.total||0).toLocaleString()}<br><small>${d}/${n.length} guessed</small>`}
+async function renderRound(){
+ app.innerHTML=`<div class="full"><div id="pano"></div><div id="hud"></div><div id="gbox"><div id="gmap"></div><button id="gbtn" disabled>Place your pin</button></div></div>`;status();
+ try{await loadMaps()}catch(e){app.innerHTML='<div class="wrap"><p class="err">'+esc(e.message)+'</p></div>';return}
+ const R=S.rounds[S.r];
+ new google.maps.StreetViewPanorama($('#pano'),{pano:R.pano,addressControl:false,showRoadLabels:false,fullscreenControl:false,motionTracking:false,motionTrackingControl:false,enableCloseButton:false});
+ const c=S.mode==='All Parks'?{lat:30,lng:0}:{lat:LOC[S.mode][0][1],lng:LOC[S.mode][0][2]};
+ gmapObj=new google.maps.Map($('#gmap'),{center:c,zoom:S.mode==='All Parks'?1:14,disableDefaultUI:true,clickableIcons:false,gestureHandling:'greedy',minZoom:1});
+ marker=null;guess=null;
+ gmapObj.addListener('click',e=>{if(submitted===S.r)return;guess={lat:e.latLng.lat(),lng:e.latLng.lng()};
+  if(marker)marker.setPosition(e.latLng);else marker=new google.maps.Marker({position:e.latLng,map:gmapObj});
+  const b=$('#gbtn');b.disabled=false;b.textContent='Lock in guess'});
+ $('#gbtn').onclick=()=>{if(!guess||submitted===S.r)return;submitted=S.r;$('#gbtn').disabled=true;$('#gbtn').textContent='Waiting for others…';
+  if(isHost)addGuess(myId,guess.lat,guess.lng);else hostConn.send({t:'guess',lat:guess.lat,lng:guess.lng})}}
+async function renderResult(){
+ const R=S.rounds[S.r],ps=Object.entries(S.players).filter(([,p])=>p.g[S.r]).sort((a,b)=>b[1].g[S.r].pts-a[1].g[S.r].pts);
+ app.innerHTML=`<div class="full"><div id="rmap"></div><div id="side"><b>${esc(R.n)}</b> · Round ${S.r+1}/${ROUNDS}<div style="margin-top:8px">
+ ${ps.map(([id,p],i)=>`<div class="pl"><span>${esc(p.name)}${id===myId?' (you)':''}<br><small>${fmt(p.g[S.r].d)} away</small></span><span>+${p.g[S.r].pts.toLocaleString()}<br><small>${p.total.toLocaleString()}</small></span></div>`).join('')}</div></div>
+ <div id="nextbox">${isHost?`<button id="nx">${S.r<ROUNDS-1?'Next round':'See final scores'}</button>`:'<span style="background:#14173acc;padding:8px 14px;border-radius:12px">Waiting for the host…</span>'}</div></div>`;
+ if(isHost)$('#nx').onclick=nextRound;
+ await loadMaps();const m=new google.maps.Map($('#rmap'),{disableDefaultUI:true,zoomControl:true,clickableIcons:false}),b=new google.maps.LatLngBounds();
+ const T={lat:R.lat,lng:R.lng};b.extend(T);
+ new google.maps.Marker({position:T,map:m,label:'★',title:'Answer'});
+ ps.forEach(([id,p])=>{const g=p.g[S.r];b.extend(g);
+  new google.maps.Marker({position:g,map:m,label:p.name[0].toUpperCase(),opacity:id===myId?1:.8});
+  new google.maps.Polyline({path:[g,T],map:m,strokeColor:id===myId?'#f5c542':'#e8457c',strokeOpacity:.9,strokeWeight:2,geodesic:true})});
+ m.fitBounds(b,80)}
+renderHome();
+</script></body></html>
