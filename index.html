@@ -11,6 +11,14 @@ body{background:radial-gradient(circle at 50% -20%,#2b2f7a,var(--bg) 60%);color:
 .two{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}.two .card{margin:0;display:flex;flex-direction:column}.two .card button{margin-top:auto}@media(max-width:560px){.two{grid-template-columns:1fr}}
 .jump{position:absolute;top:6px;left:6px;right:6px;z-index:2;display:flex;flex-wrap:wrap;gap:4px;pointer-events:none}.jump .jb{pointer-events:auto}
 .jump[hidden]{display:none}.jump::-webkit-scrollbar{display:none}.jb{flex:none;padding:3px 8px;font-size:11px;line-height:1.3;border-radius:99px;background:#14173add;color:var(--ink);border:1px solid #5560c0}.jb:hover{background:var(--pink);border-color:var(--pink)}
+#ed{display:grid;grid-template-columns:290px 1fr;height:100%}#edl{overflow:auto;padding:8px;background:#0f1230}
+.eda{margin:12px 0 4px;display:flex;justify-content:space-between;align-items:center}
+.edi{display:block;width:100%;text-align:left;background:transparent;color:var(--ink);padding:5px 8px;font-weight:400;font-size:13px;border-radius:6px}.edi.on{background:var(--pink)}
+#edr{position:relative}#edm{position:absolute;inset:0}
+#edbar{position:absolute;top:8px;left:8px;right:8px;z-index:3;background:#14173af0;padding:8px;border-radius:12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:13px}
+#edbar input{width:200px;margin:0;padding:6px}#edbar button{padding:6px 10px;font-size:13px}.sp{flex:1}
+#edsv{position:absolute;left:10px;bottom:10px;width:min(380px,60%);height:240px;z-index:3;display:none;border:2px solid #5560c0;border-radius:10px;overflow:hidden}
+@media(max-width:700px){#ed{grid-template-columns:1fr;grid-template-rows:40% 60%}}
 .pk{position:relative}.pkl{position:absolute;left:0;right:0;top:calc(100% - 10px);z-index:30;background:#12153a;border:2px solid #343a85;border-radius:10px;padding:6px 10px;box-shadow:0 10px 24px #000a}
 .pk summary{cursor:pointer;padding:10px 12px;border-radius:10px;background:#12153a;border:2px solid #343a85;margin-bottom:10px;list-style:none;font-size:14px}
 .pk summary::after{content:'▾';float:right}.pk[open] summary::after{content:'▴'}
@@ -53,15 +61,39 @@ button.alt{background:#343a85;color:var(--ink)}button:disabled{opacity:.45;curso
 <script>
 const KEY="AIzaSyDlJjVop1AwJcgmPNdZWSi-s7hfQBH8FUE";
 const ROUNDS=5;
-const LOC={
-'Disney World':[['Main Street, Magic Kingdom',28.4177,-81.5812],['Cinderella Castle',28.4195,-81.5812],['EPCOT World Showcase',28.3694,-81.5494],['Spaceship Earth',28.3747,-81.5494],['Hollywood Boulevard',28.3575,-81.5590],['Tree of Life',28.3553,-81.5901],['Disney Springs',28.3702,-81.5190],['Contemporary Resort',28.4151,-81.5740]],
-'Disneyland CA':[['Main Street U.S.A.',33.8121,-117.9190],['Fantasyland',33.8128,-117.9190],['Frontierland',33.8130,-117.9200],['Buena Vista Street',33.8063,-117.9190],['Pixar Pier',33.8080,-117.9230],['Cars Land',33.8052,-117.9205],['Downtown Disney',33.8090,-117.9240]],
-'Tokyo Disney':[['World Bazaar',35.6329,139.8795],['Cinderella Castle, Tokyo',35.6330,139.8805],['Mediterranean Harbor',35.6267,139.8851],['Ikspiari',35.6320,139.8830],['Tokyo DisneySea entrance',35.6280,139.8890],['Tokyo Disney Resort Line',35.6350,139.8800]],
-'Disneyland Paris':[['Main Street, Paris',48.8723,2.7757],['Sleeping Beauty Castle, Paris',48.8737,2.7750],['Walt Disney Studios',48.8680,2.7800],['Disney Village',48.8706,2.7835],['Disneyland Paris entrance',48.8715,2.7790]],
-'Hong Kong Disneyland':[['Main Street, Hong Kong',22.3130,114.0413],['Castle of Magical Dreams',22.3128,114.0420],['Hollywood Hotel',22.3155,114.0450],['Toy Story Land, HK',22.3115,114.0420],['Hong Kong Disneyland entrance',22.3140,114.0430]],
-'Shanghai Disneyland':[['Enchanted Storybook Castle',31.1440,121.6580],['Mickey Avenue',31.1450,121.6590],['Disneytown',31.1470,121.6570],['Tomorrowland, Shanghai',31.1430,121.6560],['Shanghai Disney Resort entrance',31.1460,121.6600]]};
-const BTN={'Disney World':['Magic Kingdom','EPCOT','Hollywood Studios','Animal Kingdom'],'Disneyland CA':['Disneyland CA'],'Tokyo Disney':['Tokyo Disney'],'Disneyland Paris':['Disneyland Paris'],'Hong Kong Disneyland':['Hong Kong Disneyland'],'Shanghai Disneyland':['Shanghai Disneyland']};
-const VIEW={'Magic Kingdom':[28.4177,-81.5812,16],'EPCOT':[28.3720,-81.5494,15],'Hollywood Studios':[28.3575,-81.5590,16],'Animal Kingdom':[28.3553,-81.5901,15],'Disneyland CA':[33.8100,-117.9205,15],'Tokyo Disney':[35.6300,139.8840,14],'Disneyland Paris':[48.8710,2.7790,15],'Hong Kong Disneyland':[22.3135,114.0430,16],'Shanghai Disneyland':[31.1450,121.6580,15]};
+// ============ LOCATIONS ============
+// Each entry is [label, lat, lng]. The game snaps each point to the nearest official Street View panorama within SNAP metres,
+// and the snapped panorama's position is the real answer. Edit, add or delete entries freely.
+// Tip: open the page with #debug on the end of the URL to list which points have coverage and the snapped coordinates.
+const SNAP=300;
+const AREAS={
+ // ---- Walt Disney World: one group per park / area ----
+ 'Magic Kingdom':[['Railroad Station, Main Street',28.4165,-81.5815],['Town Square',28.4166,-81.5812],['Main Street U.S.A.',28.4175,-81.5812],['Central Plaza (Hub)',28.4189,-81.5812],['Cinderella Castle',28.4195,-81.5812],['Prince Charming Regal Carrousel',28.4198,-81.5822],
+  ['Jungle Cruise',28.4180,-81.5834],['Magic Carpets of Aladdin',28.4182,-81.5831],['Pirates of the Caribbean',28.4185,-81.5840],['Swiss Family Treehouse',28.4187,-81.5836],
+  ['Haunted Mansion',28.4204,-81.5841],['Liberty Tree Tavern',28.4200,-81.5835],['Big Thunder Mountain',28.4208,-81.5863],['Tom Sawyer Island',28.4215,-81.5870],['Tiana\'s Bayou Adventure',28.4203,-81.5876],
+  ['Peter Pan\'s Flight',28.4204,-81.5815],['Be Our Guest Restaurant',28.4212,-81.5800],['Seven Dwarfs Mine Train',28.4217,-81.5790],['Space Mountain',28.4190,-81.5778],['Buzz Lightyear\'s Space Ranger Spin',28.4185,-81.5780],['TRON Lightcycle Run',28.4175,-81.5780],['Tomorrowland Speedway',28.4205,-81.5775],
+  ['Ticket & Transportation Center',28.4158,-81.5838],['Ferryboat Dock',28.4158,-81.5860]],
+ 'EPCOT':[['EPCOT entrance',28.3770,-81.5496],['Spaceship Earth',28.3747,-81.5494],['Dreams Fountain',28.3735,-81.5494],['Imagination Pavilion',28.3737,-81.5530],['The Land',28.3730,-81.5518],['The Seas with Nemo',28.3728,-81.5532],['Test Track',28.3739,-81.5461],['Mission: SPACE',28.3745,-81.5460],['Guardians of the Galaxy: Cosmic Rewind',28.3752,-81.5471],['World Celebration Gardens',28.3752,-81.5486],
+  ['World Showcase Plaza',28.3718,-81.5494],['Mexico Pavilion',28.3711,-81.5513],['Norway Pavilion',28.3698,-81.5521],['China Pavilion',28.3687,-81.5522],['Germany Pavilion',28.3675,-81.5516],['Italy Pavilion',28.3669,-81.5507],['American Adventure',28.3668,-81.5495],['Japan Pavilion',28.3668,-81.5481],['Morocco Pavilion',28.3676,-81.5471],['France Pavilion',28.3687,-81.5463],['United Kingdom Pavilion',28.3699,-81.5458],['Canada Pavilion',28.3712,-81.5465]],
+ 'Hollywood Studios':[['Entrance',28.3590,-81.5577],['Hollywood Boulevard',28.3580,-81.5585],['Chinese Theatre',28.3565,-81.5590],['Sunset Boulevard',28.3555,-81.5605],['Twilight Zone Tower of Terror',28.3552,-81.5612],['Rock \'n\' Roller Coaster',28.3555,-81.5620],['Echo Lake',28.3575,-81.5605],['Indiana Jones Epic Stunt Spectacular',28.3580,-81.5615],['Animation Courtyard',28.3597,-81.5565],['Mickey & Minnie\'s Runaway Railway',28.3580,-81.5575],['Star Wars Launch Bay',28.3570,-81.5560],
+  ['Toy Story Land',28.3560,-81.5627],['Black Spire Outpost',28.3535,-81.5620],['Millennium Falcon: Smugglers Run',28.3540,-81.5626],['Grand Avenue',28.3590,-81.5590]],
+ 'Animal Kingdom':[['Entrance',28.3600,-81.5906],['The Oasis',28.3584,-81.5906],['Tree of Life',28.3553,-81.5901],['Discovery Island',28.3558,-81.5903],['Pandora Entrance',28.3548,-81.5915],['Flight of Passage',28.3541,-81.5927],['Na\'vi River Journey',28.3535,-81.5927],['Harambe Village',28.3568,-81.5936],['Kilimanjaro Safaris',28.3570,-81.5960],['Rafiki\'s Planet Watch',28.3600,-81.5970],['Expedition Everest',28.3523,-81.5857],['Kali River Rapids',28.3532,-81.5871],['Asia',28.3552,-81.5870],['DinoLand U.S.A.',28.3532,-81.5893]],
+ 'Disney Springs':[['Marketplace',28.3702,-81.5190],['World of Disney',28.3700,-81.5194],['LEGO Store',28.3703,-81.5200],['The Landing',28.3705,-81.5168],['Characters in Flight',28.3712,-81.5164],['Town Center',28.3708,-81.5210],['The Edison',28.3716,-81.5223],['West Side',28.3707,-81.5238],['Cirque du Soleil Theater',28.3710,-81.5246],['Orange Garage',28.3693,-81.5173],['Boat Dock',28.3703,-81.5196]],
+ 'Resorts':[['Contemporary Resort',28.4151,-81.5740],['Polynesian Village',28.4047,-81.5864],['Grand Floridian',28.4120,-81.5870],['Wilderness Lodge',28.4105,-81.5733],['Fort Wilderness',28.4038,-81.5650],['Animal Kingdom Lodge',28.3523,-81.6018],['Yacht Club',28.3680,-81.5582],['Beach Club',28.3687,-81.5596],['BoardWalk',28.3671,-81.5568],['Swan & Dolphin',28.3664,-81.5608],['Caribbean Beach',28.3633,-81.5412],['Pop Century',28.3507,-81.5448],['Art of Animation',28.3490,-81.5440],['Coronado Springs',28.3500,-81.5585],['All-Star Movies',28.3420,-81.5565],['Port Orleans Riverside',28.3880,-81.5350],['Old Key West',28.3700,-81.5260],['Saratoga Springs',28.3740,-81.5170]],
+ // ---- Other resorts ----
+ 'Disneyland CA':[['Esplanade',33.8097,-117.9190],['Town Square',33.8106,-117.9190],['Main Street U.S.A.',33.8113,-117.9190],['Sleeping Beauty Castle',33.8121,-117.9190],['Fantasyland',33.8128,-117.9190],['Matterhorn Bobsleds',33.8128,-117.9172],['Haunted Mansion',33.8123,-117.9210],['New Orleans Square',33.8120,-117.9208],['Adventureland',33.8117,-117.9203],['Indiana Jones Adventure',33.8120,-117.9212],['Frontierland',33.8130,-117.9200],['Tomorrowland',33.8105,-117.9179],['Mickey\'s Toontown',33.8131,-117.9172],['Galaxy\'s Edge',33.8151,-117.9214],
+  ['Buena Vista Street',33.8063,-117.9190],['Carthay Circle',33.8062,-117.9195],['Hollywood Land',33.8060,-117.9170],['Avengers Campus',33.8071,-117.9189],['Pixar Pier',33.8080,-117.9230],['California Screamin\'',33.8070,-117.9232],['Grizzly Peak',33.8075,-117.9222],['Paradise Gardens Park',33.8070,-117.9242],['Cars Land / Radiator Springs',33.8052,-117.9205],['Grand Californian Hotel',33.8087,-117.9227],['Downtown Disney',33.8090,-117.9240],['Disneyland Hotel',33.8100,-117.9245]],
+ 'Tokyo Disney':[['Tokyo Disneyland entrance',35.6325,139.8800],['World Bazaar',35.6329,139.8795],['Cinderella Castle, Tokyo',35.6330,139.8805],['Adventureland, Tokyo',35.6340,139.8806],['Westernland',35.6345,139.8786],['Critter Country',35.6345,139.8778],['Fantasyland, Tokyo',35.6334,139.8799],['Toontown, Tokyo',35.6360,139.8808],['Tomorrowland, Tokyo',35.6360,139.8795],
+  ['Tokyo DisneySea entrance',35.6280,139.8889],['Mediterranean Harbor',35.6267,139.8851],['Mount Prometheus',35.6272,139.8850],['American Waterfront',35.6265,139.8843],['Lost River Delta',35.6262,139.8866],['Arabian Coast',35.6262,139.8852],['Mermaid Lagoon',35.6259,139.8860],['Fantasy Springs',35.6245,139.8868],['Hotel MiraCosta',35.6264,139.8838],['Ikspiari',35.6320,139.8830],['Disney Ambassador Hotel',35.6325,139.8860],['Tokyo Disneyland Hotel',35.6335,139.8842]],
+ 'Disneyland Paris':[['Main Street, Paris',48.8723,2.7757],['Sleeping Beauty Castle, Paris',48.8737,2.7750],['Fantasyland, Paris',48.8745,2.7760],['Adventureland, Paris',48.8730,2.7735],['Frontierland, Paris',48.8742,2.7735],['Discoveryland',48.8718,2.7780],['Star Tours, Paris',48.8715,2.7790],['Walt Disney Studios entrance',48.8680,2.7800],['Toon Studio',48.8683,2.7815],['Avengers Campus, Paris',48.8685,2.7787],['Disney Village',48.8706,2.7835],['Disneyland Hotel, Paris',48.8730,2.7777],['Disney\'s Hotel New York',48.8698,2.7810],['Newport Bay Club',48.8660,2.7810]],
+ 'Hong Kong Disneyland':[['Entrance, Hong Kong',22.3140,114.0430],['Main Street, Hong Kong',22.3130,114.0413],['Castle of Magical Dreams',22.3128,114.0420],['Fantasyland, HK',22.3120,114.0425],['Adventureland, HK',22.3118,114.0405],['Grizzly Gulch',22.3139,114.0392],['Mystic Point',22.3125,114.0385],['Toy Story Land, HK',22.3115,114.0420],['Tomorrowland, HK',22.3135,114.0430],['Hollywood Hotel',22.3155,114.0450],['Disneyland Hotel, HK',22.3157,114.0435],['Explorers Lodge',22.3159,114.0402]],
+ 'Shanghai Disneyland':[['Entrance, Shanghai',31.1460,121.6600],['Mickey Avenue',31.1450,121.6590],['Gardens of Imagination',31.1445,121.6585],['Enchanted Storybook Castle',31.1440,121.6580],['Fantasyland, Shanghai',31.1435,121.6572],['Adventure Isle',31.1425,121.6590],['Treasure Cove',31.1420,121.6590],['Tomorrowland, Shanghai',31.1430,121.6560],['Toy Story Land, Shanghai',31.1415,121.6560],['Disneytown',31.1470,121.6570],['Shanghai Disneyland Hotel',31.1480,121.6590],['Toy Story Hotel',31.1500,121.6560]]};
+const DEFAULT_AREAS=JSON.stringify(AREAS);
+const LOC={},WDW_AREAS=['Magic Kingdom','EPCOT','Hollywood Studios','Animal Kingdom','Disney Springs','Resorts'],OTHER=['Disneyland CA','Tokyo Disney','Disneyland Paris','Hong Kong Disneyland','Shanghai Disneyland'];
+function rebuildLOC(){LOC['Disney World']=WDW_AREAS.flatMap(k=>AREAS[k]);OTHER.forEach(k=>LOC[k]=AREAS[k])}
+rebuildLOC();
+const BTN={'Disney World':['Magic Kingdom','EPCOT','Hollywood Studios','Animal Kingdom','Disney Springs'],'Disneyland CA':['Disneyland CA'],'Tokyo Disney':['Tokyo Disney'],'Disneyland Paris':['Disneyland Paris'],'Hong Kong Disneyland':['Hong Kong Disneyland'],'Shanghai Disneyland':['Shanghai Disneyland']};
+const VIEW={'Magic Kingdom':[28.4177,-81.5812,16],'EPCOT':[28.3720,-81.5494,15],'Hollywood Studios':[28.3575,-81.5590,16],'Animal Kingdom':[28.3553,-81.5901,15],'Disney Springs':[28.3702,-81.5205,16],'Disneyland CA':[33.8100,-117.9205,15],'Tokyo Disney':[35.6300,139.8840,14],'Disneyland Paris':[48.8710,2.7790,15],'Hong Kong Disneyland':[22.3135,114.0430,16],'Shanghai Disneyland':[31.1450,121.6580,15]};
 const SHORT={'Disneyland CA':'Disneyland','Tokyo Disney':'Tokyo','Disneyland Paris':'Paris','Hong Kong Disneyland':'Hong Kong','Shanghai Disneyland':'Shanghai'};
 const MODES=['All Parks',...Object.keys(LOC)];
 const $=s=>document.querySelector(s),app=$('#app');
@@ -83,6 +115,60 @@ let mapsP;function loadMaps(){return mapsP||(mapsP=new Promise((res,rej)=>{windo
  s.src=`https://maps.googleapis.com/maps/api/js?key=${KEY}&callback=__mr&v=weekly`;s.onerror=()=>rej(new Error('Google Maps failed to load'));document.head.appendChild(s)}))}
 window.gm_authFailure=()=>{alert('Google Maps rejected the API key. Enable "Maps JavaScript API" and check the key\'s referrer restrictions.')};
 
+async function checkLocs(){const o=$('#dbo');o.textContent='Checking…';await ready;await loadMaps();const sv=new google.maps.StreetViewService();let t='';
+ for(const [a,l] of Object.entries(AREAS))for(const [n,la,ln] of l){let r='NO COVERAGE within '+SNAP+' m';
+  try{const x=await sv.getPanorama({location:{lat:la,lng:ln},radius:SNAP,preference:'nearest'}),q=x.data.location.latLng;r=Math.round(hav(la,ln,q.lat(),q.lng())*1000)+' m away -> '+q.lat().toFixed(5)+','+q.lng().toFixed(5)}catch(e){}
+  t+=a+' | '+n+' | '+r+'\n';o.textContent=t}
+ o.textContent=t+'Done.'}
+
+// ---------- location overrides + editor (#debug) ----------
+let ready;
+function applyAreas(d){if(!d||typeof d!=='object')return;Object.keys(AREAS).forEach(k=>{if(Array.isArray(d[k])&&d[k].every(e=>Array.isArray(e)&&e.length===3&&isFinite(e[1])&&isFinite(e[2])))AREAS[k]=d[k]});rebuildLOC()}
+function loadAreas(){return ready=(async()=>{const draft=lsGet('dg-areas',null);
+ if(draft&&(location.hash==='#debug'||!shared)){applyAreas(draft);return}
+ if(shared){try{const v=await (await fetch(`${BOARD_URL}/locations/current.json`)).json();if(v&&v.data)applyAreas(JSON.parse(v.data))}catch(e){}}})()}
+let ed={a:null,i:-1,st:''};
+const edSave=()=>lsSet('dg-areas',AREAS);
+async function openEditor(){
+ await ready;await loadMaps();view='editor';ed={a:null,i:-1,st:''};
+ app.innerHTML='<div id="ed"><div id="edl"></div><div id="edr"><div id="edm"></div><div id="edbar"></div><div id="edsv"></div></div></div>';
+ ed.map=new google.maps.Map($('#edm'),{center:{lat:28.40,lng:-81.57},zoom:11,streetViewControl:false,fullscreenControl:false,clickableIcons:false,gestureHandling:'greedy',mapTypeControlOptions:{position:google.maps.ControlPosition.RIGHT_BOTTOM}});
+ ed.sv=new google.maps.StreetViewService();
+ ed.svp=new google.maps.StreetViewPanorama($('#edsv'),{addressControl:false,showRoadLabels:false,fullscreenControl:false,enableCloseButton:false});
+ ed.mk=new google.maps.Marker({map:ed.map,draggable:true,visible:false});
+ ed.mk.addListener('dragend',e=>edMove(e.latLng.lat(),e.latLng.lng()));
+ ed.map.addListener('click',e=>{if(ed.a)edMove(e.latLng.lat(),e.latLng.lng())});
+ edList();edBar();
+ if(shared){const au=await fbAuth();if(au&&$('#edmsg'))$('#edmsg').textContent='Admin ID: '+au.uid}}
+function edList(){const L=$('#edl'),t=L.scrollTop;
+ L.innerHTML=Object.entries(AREAS).map(([a,l])=>`<div class="eda"><b>${esc(a)}</b><button class="jb" data-add="${esc(a)}" style="pointer-events:auto">+ add</button></div>`+l.map((e,i)=>`<button class="edi ${a===ed.a&&i===ed.i?'on':''}" data-a="${esc(a)}" data-i="${i}">${esc(e[0])}</button>`).join('')).join('');
+ L.querySelectorAll('.edi').forEach(b=>b.onclick=()=>edSelect(b.dataset.a,+b.dataset.i));
+ L.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>edAdd(b.dataset.add));L.scrollTop=t}
+function edSelect(a,i){ed.a=a;ed.i=i;const e=AREAS[a][i],pt={lat:e[1],lng:e[2]};ed.st='';
+ ed.mk.setPosition(pt);ed.mk.setVisible(true);ed.map.setCenter(pt);ed.map.setZoom(Math.max(ed.map.getZoom(),18));edList();edBar();edPano()}
+function edMove(lat,lng){const e=AREAS[ed.a][ed.i];e[1]=+lat.toFixed(6);e[2]=+lng.toFixed(6);ed.mk.setPosition({lat:e[1],lng:e[2]});edSave();edBar();edPano()}
+async function edPano(){const e=AREAS[ed.a][ed.i];$('#edsv').style.display='block';ed.snap=null;
+ try{const x=await ed.sv.getPanorama({location:{lat:e[1],lng:e[2]},radius:SNAP,preference:'nearest'}),q=x.data.location.latLng;
+  ed.snap={lat:q.lat(),lng:q.lng()};ed.svp.setPano(x.data.location.pano);ed.st='Street View found '+Math.round(hav(e[1],e[2],q.lat(),q.lng())*1000)+' m from the pin'}
+ catch(err){ed.st='NO Street View within '+SNAP+' m. Move the pin.'}
+ if($('#edst'))$('#edst').textContent=ed.st}
+function edAdd(a){const c=ed.map.getCenter();AREAS[a].push(['New location',+c.lat().toFixed(6),+c.lng().toFixed(6)]);edSave();edSelect(a,AREAS[a].length-1)}
+async function edPublish(){const m=$('#edmsg');if(!shared){m.textContent='Set FB_KEY first.';return}
+ m.textContent='Publishing…';const au=await fbAuth();if(!au){m.textContent=fbWhy();return}
+ try{const r=await fetch(`${BOARD_URL}/locations/current.json?auth=${au.token}`,{method:'PUT',body:JSON.stringify({data:JSON.stringify(AREAS),t:Date.now()})});
+  m.textContent=r.ok?'Published. Everyone now gets these locations.':'Blocked (HTTP '+r.status+'). Put this admin ID in the database rules: '+au.uid}
+ catch(e){m.textContent='Network error.'}}
+function edBar(){const e=ed.a?AREAS[ed.a][ed.i]:null,old=$('#edmsg')?$('#edmsg').textContent:'';
+ $('#edbar').innerHTML=(e?`<input id="ednm" value="${esc(e[0])}" maxlength="50" aria-label="Location name"><span>${esc(ed.a)} · ${e[1].toFixed(5)}, ${e[2].toFixed(5)}</span><span id="edst">${esc(ed.st)}</span><button id="edsn" class="alt">Snap pin to coverage</button><button id="edde" class="alt">Delete</button>`:'<span>Pick a location on the left, then drag the pin or click the map.</span>')+'<span class="sp"></span><button id="edpu">Publish</button><button id="edcp" class="alt">Copy JSON</button><button id="edrs" class="alt">Reset</button><button id="edx" class="alt">Exit</button><span id="edmsg"></span>';
+ $('#edmsg').textContent=old;
+ if(e){$('#ednm').onchange=ev=>{e[0]=ev.target.value.trim()||e[0];edSave();edList()};
+  $('#edsn').onclick=()=>{if(ed.snap)edMove(ed.snap.lat,ed.snap.lng)};
+  $('#edde').onclick=()=>{if(!confirm('Delete "'+e[0]+'"?'))return;AREAS[ed.a].splice(ed.i,1);ed.a=null;ed.i=-1;ed.mk.setVisible(false);$('#edsv').style.display='none';edSave();edList();edBar()}}
+ $('#edpu').onclick=edPublish;
+ $('#edcp').onclick=()=>{navigator.clipboard&&navigator.clipboard.writeText(JSON.stringify(AREAS));$('#edmsg').textContent='Copied JSON.'};
+ $('#edrs').onclick=()=>{if(!confirm('Reset every location to the defaults in the code? (Publish afterwards to apply it for everyone.)'))return;applyAreas(JSON.parse(DEFAULT_AREAS));try{localStorage.removeItem('dg-areas')}catch(x){}ed.a=null;ed.i=-1;ed.mk.setVisible(false);edList();edBar()};
+ $('#edx').onclick=()=>{view='';renderHome()}}
+
 // ---------- state ----------
 let peer,conns=[],hostConn,isHost=false,myId='',myName='',S=null,view='',submitted=-1,pickMode='All Parks',gmapObj,marker,guess,homeErr='';
 const PFX='disneyguessr-';
@@ -91,7 +177,7 @@ function hav(a,b,c,d){const R=6371,r=x=>x*Math.PI/180,dl=r(c-a),dn=r(d-b);const 
 const fmt=d=>d<1?Math.round(d*1000)+' m':d<100?d.toFixed(1)+' km':Math.round(d).toLocaleString()+' km';
 const shuffle=(a,rng=Math.random)=>{for(let i=a.length-1;i>0;i--){const j=rng()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
 
-function broadcast(){conns.forEach(c=>c.open&&c.send({t:'state',s:S}));render()}
+function broadcast(){conns.forEach(c=>c.open&&c.send({t:'state',s:S}));if(S&&S.solo&&S.daily&&S.rounds.length)lsSet('dg-dprog',{key:S.daily,S});render()}
 function hostInit(code){S={code,mode:pickMode,phase:'lobby',r:0,rounds:[],players:{[myId]:{name:myName,total:0,g:[]}}}}
 
 // ---------- host networking ----------
@@ -110,6 +196,7 @@ function createRoom(){
   c.on('close',()=>{conns=conns.filter(x=>x!==c);const p=S.players[c.peer];if(p){if(S.phase==='lobby')delete S.players[c.peer];else p.left=true}checkAll();broadcast()})})}
 
 async function startGame(){
+ await ready;
  S.phase='loading';S.mode=S.mode;broadcast();
  try{await loadMaps();S.rounds=await pickRounds(S.mode)}catch(e){S.phase='lobby';S.err=e.message;broadcast();return}
  Object.values(S.players).forEach(p=>{p.total=0;p.g=[]});S.r=0;S.phase='round';S.err='';broadcast()}
@@ -118,7 +205,7 @@ async function pickRounds(mode,rng=Math.random,parks){
  const pool=shuffle(names.flatMap(n=>LOC[n]),rng);
  const sv=new google.maps.StreetViewService(),out=[];
  for(const [n,la,ln] of pool){if(out.length>=ROUNDS)break;
-  try{const r=await sv.getPanorama({location:{lat:la,lng:ln},radius:400,preference:'nearest'});const l=r.data.location;
+  try{const r=await sv.getPanorama({location:{lat:la,lng:ln},radius:SNAP,preference:'nearest'});const l=r.data.location;
    out.push({n,pano:l.pano,lat:l.latLng.lat(),lng:l.latLng.lng()})}catch(e){}}
  if(!out.length)throw new Error('No Street View found. Make sure the Maps JavaScript API is enabled for your key.');
  for(let i=0;out.length<ROUNDS;i++)out.push(out[i%out.length]);
@@ -208,7 +295,10 @@ async function showBoard(el,key){
 function goHome(){S=null;view='';conns=[];if(peer){try{peer.destroy()}catch(e){}peer=null}renderHome()}
 function boardScreen(){view='board';app.innerHTML=`<div class="wrap"><h1>Daily</h1><p class="sub">Resets in ${untilReset()} (8am Eastern)</p><div id="lb"></div><button class="alt" id="hm">Home</button></div>`;$('#hm').onclick=goHome;showBoard($('#lb'),dayKey())}
 async function startSolo(daily){
+ await ready;
  if(daily&&getPlayed())return boardScreen();
+ const dp=lsGet('dg-dprog',null);
+ if(daily&&dp&&dp.key===dayKey()){S=dp.S;myName=S.players.solo.name;isHost=true;conns=[];myId='solo';view='';render();return}
  if(daily&&lsGet('dg-started',null)===dayKey()){homeErr='You already started today\'s daily, so it\'s been used. Try Quick play or come back after 8am ET.';view='';render();return}
  if(daily){const c=await claimDaily(dayKey());if(c==='played'){return getPlayed()?boardScreen():(homeErr='You already started today\'s daily, so it\'s been used. Try Quick play or come back after 8am ET.',view='',render())}
   if(c==='error'){homeErr=fbWhy();view='';render();return}lsSet('dg-started',dayKey())}
@@ -235,24 +325,25 @@ function render(){
  if(S.phase==='lobby'||S.phase==='loading'||S.phase==='final'){view=key+JSON.stringify(Object.values(S.players).map(p=>[p.name,p.total,p.left]))+S.mode+(S.err||'');renderScreen();return}
  if(S.phase==='round'){if(view!==key){view=key;submitted=-1;renderRound()}else status();return}
  if(S.phase==='result'&&view!==key){view=key;renderResult()}}
-function renderHome(){view='home';const pl=getPlayed();
+function renderHome(){view='home';const pl=getPlayed(),dpg=lsGet('dg-dprog',null),cont=!pl&&dpg&&dpg.key===dayKey();
  app.innerHTML=`<div class="wrap"><h1>DisneyGuessr</h1><p class="sub">Drop into a Disney park. Pin where you are. Beat your friends.</p>
  <div class="card"><label for="nm">Your name <small>(needed for Daily and rooms)</small></label><input id="nm" maxlength="16" placeholder="e.g. Pixie Dust" value="${esc(myName)}" autocomplete="off" style="margin-bottom:0"></div>
  <div class="two">
   <div class="card"><h2>Daily</h2><p class="sub" style="margin:0 0 12px;font-size:14px">The same 5 spots from all parks for everyone. New set in ${untilReset()} (8am ET).</p>
-   <button id="dy">${pl?'Today: '+pl.score.toLocaleString()+' pts':'Play daily'}</button><button id="lbb" class="alt" style="margin-top:8px">Leaderboard</button></div>
+   <button id="dy">${pl?'Today: '+pl.score.toLocaleString()+' pts':cont?'Continue':'Play daily'}</button><button id="lbb" class="alt" style="margin-top:8px">Leaderboard</button></div>
   <div class="card"><h2>Quick play</h2><p class="sub" style="margin:0 0 12px;font-size:14px">5 random spots. No name or room needed.</p>
    <details class="pk"><summary id="pks"></summary><div class="pkl">${Object.keys(LOC).map(n=>`<label><input type="checkbox" class="pkc" value="${n}" ${qpParks().includes(n)?'checked':''}>${n}</label>`).join('')}</div></details>
    <button id="qp" class="alt">Play solo</button></div>
  </div>
- <div class="card"><h2>Play with friends</h2><label>Park</label>${modeChips(pickMode,true)}
+ <div class="card"><h2>Play with friends</h2>${modeChips(pickMode,true)}
  <button id="cr" style="width:100%">Create room</button>
  <label for="cd" style="display:block;margin-top:16px">Have an invite code?</label><div class="row"><input id="cd" maxlength="5" placeholder="ABCDE" style="text-transform:uppercase"><button id="jn" class="alt" style="margin:6px 0 12px">Join room</button></div></div>
- <div class="err" id="herr">${esc(homeErr)}</div></div>`;
+ <div class="err" id="herr">${esc(homeErr)}</div>${location.hash==='#debug'?'<div class="card"><button id="edb">Open location editor</button> <button id="dbg" class="alt">Check Street View coverage</button><pre id="dbo" style="white-space:pre-wrap;font-size:12px;text-align:left"></pre></div>':''}</div>`;
  bindChips(m=>{pickMode=m;myName=$('#nm').value;renderHome()});
  const chk=()=>{myName=$('#nm').value.trim();const e=nameError(myName);if(e){$('#herr').textContent=e;return false}return true};
- $('#dy').onclick=()=>{if(getPlayed()){boardScreen();return}if(chk()){homeErr='';startSolo(true)}};
+ $('#dy').onclick=()=>{if(getPlayed()){boardScreen();return}if(cont){startSolo(true);return}if(chk()){homeErr='';startSolo(true)}};
  $('#lbb').onclick=boardScreen;
+ if($('#dbg')){$('#dbg').onclick=checkLocs;$('#edb').onclick=openEditor}
  const upd=()=>{const on=[...document.querySelectorAll('.pkc')].filter(c=>c.checked).map(c=>c.value);lsSet('dg-qp-parks',on);
   $('#pks').textContent=on.length===MODES.length-1?'All parks':on.length===1?on[0]:on.length?on.length+' of '+(MODES.length-1)+' parks':'No parks selected'};
  document.querySelectorAll('.pkc').forEach(c=>c.onchange=upd);upd();
@@ -311,5 +402,6 @@ async function renderResult(){
   new google.maps.Marker({position:g,map:m,label:p.name[0].toUpperCase(),opacity:id===myId?1:.8});
   new google.maps.Polyline({path:[g,T],map:m,strokeColor:id===myId?'#f5c542':'#e8457c',strokeOpacity:.9,strokeWeight:2,geodesic:true})});
  m.fitBounds(b,80)}
+loadAreas();
 renderHome();
 </script></body></html>
